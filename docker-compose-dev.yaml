@@ -1,33 +1,25 @@
-version: "1.0"
+version: "3.9"
 
 services:
 
   redis:
     image: redis:6-alpine
-    restart: always
-    # Set the redis password when startup redis server.
-    command: redis-server --requirepass doc123456
-    hostname: redis
     ports:
       - 6379:6379
 
   mongo:
     image: mongo:6
-    hostname: mongo
     ports:
       - 27017:27017
     volumes:
       - mongodb_data_container:/data/db
 
   qdrant:
-    image: qdrant/qdrant:v1.3.2
-    hostname: qdrant
+    image: qdrant/qdrant:v1.8.1
     ports:
       - 6333:6333
     volumes:
       - qdrant_storage:/qdrant/storage
-
-
 
 volumes:
   mongodb_data_container:

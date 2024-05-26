@@ -1,85 +1,61 @@
-version: "1.0"
+version: "3.9"
 
 services:
-  # frontend:
-  #   build: ./frontend
-  #   environment:
-  #     - VITE_API_HOST=http://localhost:7091
-  #     - VITE_API_STREAMING=$VITE_API_STREAMING
-  #   ports:
-  #     - "5173:5173"
-  #   depends_on:
-  #     - backend
+  frontend:
+    build: ./frontend
+    environment:
+      - VITE_API_HOST=http://localhost:7091
+      - VITE_API_STREAMING=$VITE_API_STREAMING
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
 
   backend:
-    build: ./api
+    build: ./application
     environment:
-      - OPENAI_API_TYPE=$OPENAI_API_TYPE
       - API_KEY=$API_KEY
-      - EMBEDDINGS_KEY=$EMBEDDINGS_KEY
-      - AZURE_OPENAI_API_BASE=$AZURE_OPENAI_API_BASE
-      - AZURE_OPENAI_API_VERSION=$AZURE_OPENAI_API_VERSION
-      - AZURE_DEPLOYMENT_NAME=$AZURE_DEPLOYMENT_NAME
-      - AZURE_EMBEDDINGS_DEPLOYMENT_NAME=$AZURE_EMBEDDINGS_DEPLOYMENT_NAME
-      - CELERY_BROKER_URL=$CELERY_BROKER_URL
-      - CELERY_RESULT_BACKEND=$CELERY_RESULT_BACKEND
-      - MONGO_URI=$MONGO_URI
-      - QDRANT_HOST=$QDRANT_HOST
-      - QDRANT_PORT=$QDRANT_PORT
-      - QDRANT_COLLECTION_NAME=$QDRANT_COLLECTION_NAME
-    hostname: backend
+      - EMBEDDINGS_KEY=$API_KEY
+      - LLM_NAME=$LLM_NAME
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - MONGO_URI=mongodb://mongo:27017/docsgpt
     ports:
       - "7091:7091"
     volumes:
-      - ./api/storage:/app/storage
+      - ./application/indexes:/app/application/indexes
+      - ./application/inputs:/app/application/inputs
+      - ./application/vectors:/app/application/vectors
     depends_on:
       - redis
       - mongo
-      - qdrant
 
   worker:
-    build: ./api
-    command: celery -A app.celery worker -l INFO
+    build: ./application
+    command: celery -A application.app.celery worker -l INFO
     environment:
-      - CELERY_BROKER_URL=$CELERY_BROKER_URL
-      - CELERY_RESULT_BACKEND=$CELERY_RESULT_BACKEND
-      - MONGO_URI=$MONGO_URI
-      - QDRANT_HOST=$QDRANT_HOST
-      - QDRANT_PORT=$QDRANT_PORT
-      - QDRANT_COLLECTION_NAME=$QDRANT_COLLECTION_NAME
-      - API_URL=$API_URL
+      - API_KEY=$API_KEY
+      - EMBEDDINGS_KEY=$API_KEY
+      - LLM_NAME=$LLM_NAME
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - MONGO_URI=mongodb://mongo:27017/docsgpt
+      - API_URL=http://backend:7091
     depends_on:
       - redis
       - mongo
-      - qdrant
 
   redis:
     image: redis:6-alpine
-    restart: always
-    # Set the redis password when startup redis server.
-    command: redis-server --requirepass doc123456
-    hostname: redis
     ports:
       - 6379:6379
 
   mongo:
     image: mongo:6
-    hostname: mongo
     ports:
       - 27017:27017
     volumes:
       - mongodb_data_container:/data/db
 
-  qdrant:
-    image: qdrant/qdrant:v1.3.2
-    hostname: qdrant
-    ports:
-      - 6333:6333
-    volumes:
-      - qdrant_storage:/qdrant/storage
-
-
-
 volumes:
   mongodb_data_container:
-  qdrant_storage:
